@@ -30,7 +30,6 @@ namespace model {
  * ordering, but modified to support server timestamps.
  */
 const int32_t TYPE_ORDER_NULL = 0;
-
 const int32_t TYPE_ORDER_BOOLEAN = 1;
 const int32_t TYPE_ORDER_NUMBER = 2;
 const int32_t TYPE_ORDER_TIMESTAMP = 3;
@@ -59,6 +58,44 @@ class Values {
 
  private:
   Values() = default;
+
+  static bool NumberEquals(const google_firestore_v1_Value& left,
+                           const google_firestore_v1_Value& right);
+
+  static bool ArrayEquals(const google_firestore_v1_Value& left,
+                          const google_firestore_v1_Value& right);
+
+  static bool ObjectEquals(const google_firestore_v1_Value& left,
+                           const google_firestore_v1_Value& right);
+
+  static int CompareNumbers(const google_firestore_v1_Value& left,
+                            const google_firestore_v1_Value& right);
+  static int CompareTimestamps(const google_firestore_v1_Value& left,
+                               const google_firestore_v1_Value& right);
+  static int CompareStrings(const google_firestore_v1_Value& left,
+                            const google_firestore_v1_Value& right);
+  static int CompareBlobs(const google_firestore_v1_Value& left,
+                          const google_firestore_v1_Value& right);
+  static int CompareReferences(const google_firestore_v1_Value& left,
+                               const google_firestore_v1_Value& right);
+  static int CompareGeoPoints(const google_firestore_v1_Value& left,
+                              const google_firestore_v1_Value& right);
+  static int CompareArrays(const google_firestore_v1_Value& left,
+                           const google_firestore_v1_Value& right);
+  static int CompareObjects(const google_firestore_v1_Value& left,
+                            const google_firestore_v1_Value& right);
+
+  static std::string CanonifyTimestamp(const google_firestore_v1_Value& value);
+
+  static std::string CanonifyBlob(const google_firestore_v1_Value& value);
+
+  static std::string CanonifyReference(const google_firestore_v1_Value& value);
+
+  static std::string CanonifyGeoPoint(const google_firestore_v1_Value& value);
+
+  static std::string CanonifyArray(const google_firestore_v1_Value& value);
+
+  static std::string CanonifyObject(const google_firestore_v1_Value& value);
 };
 
 }  // namespace model

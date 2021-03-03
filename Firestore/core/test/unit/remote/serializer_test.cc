@@ -59,6 +59,7 @@
 #include "Firestore/core/src/timestamp_internal.h"
 #include "Firestore/core/src/util/status.h"
 #include "Firestore/core/test/unit/nanopb/nanopb_testing.h"
+#include "Firestore/core/test/unit/testutil/proto_value.h"
 #include "Firestore/core/test/unit/testutil/status_testing.h"
 #include "Firestore/core/test/unit/testutil/testutil.h"
 #include "absl/strings/string_view.h"
@@ -115,6 +116,7 @@ using testutil::Filter;
 using testutil::Key;
 using testutil::Map;
 using testutil::OrderBy;
+using testutil::ProtoValue;
 using testutil::Query;
 using testutil::Ref;
 using testutil::Value;
@@ -274,72 +276,6 @@ class SerializerTest : public ::testing::Test {
               uint8_t new_value) {
     ASSERT_EQ(*byte, expected_initial_value);
     *byte = new_value;
-  }
-
-  v1::Value ValueProto(std::nullptr_t) {
-    ByteString bytes = EncodeFieldValue(FieldValue::Null());
-    return ProtobufParse<v1::Value>(bytes);
-  }
-
-  v1::Value ValueProto(bool b) {
-    ByteString bytes = EncodeFieldValue(FieldValue::FromBoolean(b));
-    return ProtobufParse<v1::Value>(bytes);
-  }
-
-  v1::Value ValueProto(int64_t i) {
-    ByteString bytes = EncodeFieldValue(FieldValue::FromInteger(i));
-    return ProtobufParse<v1::Value>(bytes);
-  }
-
-  v1::Value ValueProto(double d) {
-    ByteString bytes = EncodeFieldValue(FieldValue::FromDouble(d));
-    return ProtobufParse<v1::Value>(bytes);
-  }
-
-  // int64_t and double are equally good overloads for integer literals so this
-  // avoids ambiguity
-  v1::Value ValueProto(int i) {
-    return ValueProto(static_cast<int64_t>(i));
-  }
-
-  v1::Value ValueProto(const char* s) {
-    return ValueProto(std::string(s));
-  }
-
-  v1::Value ValueProto(const std::string& s) {
-    ByteString bytes = EncodeFieldValue(FieldValue::FromString(s));
-    return ProtobufParse<v1::Value>(bytes);
-  }
-
-  v1::Value ValueProto(const Timestamp& ts) {
-    ByteString bytes = EncodeFieldValue(FieldValue::FromTimestamp(ts));
-    return ProtobufParse<v1::Value>(bytes);
-  }
-
-  v1::Value ValueProto(const ByteString& blob) {
-    ByteString bytes = EncodeFieldValue(FieldValue::FromBlob(blob));
-    return ProtobufParse<v1::Value>(bytes);
-  }
-
-  v1::Value ValueProto(const FieldValue::Reference& ref) {
-    ByteString bytes = EncodeFieldValue(
-        FieldValue::FromReference(ref.database_id(), ref.key()));
-    return ProtobufParse<v1::Value>(bytes);
-  }
-
-  v1::Value ValueProto(const GeoPoint& geo_point) {
-    ByteString bytes = EncodeFieldValue(FieldValue::FromGeoPoint(geo_point));
-    return ProtobufParse<v1::Value>(bytes);
-  }
-
-  v1::Value ValueProto(const std::vector<FieldValue>& array) {
-    ByteString bytes = EncodeFieldValue(FieldValue::FromArray(array));
-    return ProtobufParse<v1::Value>(bytes);
-  }
-
-  v1::Value ValueProto(const FieldValue::Map& map) {
-    ByteString bytes = EncodeFieldValue(FieldValue::FromMap(map));
-    return ProtobufParse<v1::Value>(bytes);
   }
 
   /**
@@ -584,13 +520,14 @@ class SerializerTest : public ::testing::Test {
 
 TEST_F(SerializerTest, EncodesNull) {
   FieldValue model = FieldValue::Null();
-  ExpectRoundTrip(model, ValueProto(nullptr), FieldValue::Type::Null);
+  ExpectRoundTrip(model, ProtoValue::Wrap(nullptr), FieldValue::Type::Null);
 }
 
 TEST_F(SerializerTest, EncodesBool) {
   for (bool bool_value : {true, false}) {
     FieldValue model = FieldValue::FromBoolean(bool_value);
-    ExpectRoundTrip(model, ValueProto(bool_value), FieldValue::Type::Boolean);
+    ExpectRoundTrip(model, ProtoValue::Wrap(bool_value),
+                    FieldValue::Type::Boolean);
   }
 }
 
@@ -605,7 +542,8 @@ TEST_F(SerializerTest, EncodesIntegers) {
 
   for (int64_t int_value : cases) {
     FieldValue model = FieldValue::FromInteger(int_value);
-    ExpectRoundTrip(model, ValueProto(int_value), FieldValue::Type::Integer);
+    ExpectRoundTrip(model, ProtoValue::Wrap(int_value),
+                    FieldValue::Type::Integer);
   }
 }
 
@@ -644,7 +582,8 @@ TEST_F(SerializerTest, EncodesDoubles) {
 
   for (double double_value : cases) {
     FieldValue model = FieldValue::FromDouble(double_value);
-    ExpectRoundTrip(model, ValueProto(double_value), FieldValue::Type::Double);
+    ExpectRoundTrip(model, ProtoValue::Wrap(double_value),
+                    FieldValue::Type::Double);
   }
 }
 
@@ -667,7 +606,8 @@ TEST_F(SerializerTest, EncodesString) {
 
   for (const std::string& string_value : cases) {
     FieldValue model = FieldValue::FromString(string_value);
-    ExpectRoundTrip(model, ValueProto(string_value), FieldValue::Type::String);
+    ExpectRoundTrip(model, ProtoValue::Wrap(string_value),
+                    FieldValue::Type::String);
   }
 }
 
@@ -684,7 +624,8 @@ TEST_F(SerializerTest, EncodesTimestamps) {
 
   for (const Timestamp& ts_value : cases) {
     FieldValue model = FieldValue::FromTimestamp(ts_value);
-    ExpectRoundTrip(model, ValueProto(ts_value), FieldValue::Type::Timestamp);
+    ExpectRoundTrip(model, ProtoValue::Wrap(ts_value),
+                    FieldValue::Type::Timestamp);
   }
 }
 
@@ -697,7 +638,8 @@ TEST_F(SerializerTest, EncodesBlobs) {
 
   for (const ByteString& blob_value : cases) {
     FieldValue model = FieldValue::FromBlob(blob_value);
-    ExpectRoundTrip(model, ValueProto(blob_value), FieldValue::Type::Blob);
+    ExpectRoundTrip(model, ProtoValue::Wrap(blob_value),
+                    FieldValue::Type::Blob);
   }
 }
 
@@ -737,7 +679,8 @@ TEST_F(SerializerTest, EncodesReferences) {
   for (const auto& ref_value : cases) {
     FieldValue model =
         FieldValue::FromReference(ref_value.database_id(), ref_value.key());
-    ExpectRoundTrip(model, ValueProto(ref_value), FieldValue::Type::Reference);
+    ExpectRoundTrip(model, ProtoValue::Wrap(ref_value),
+                    FieldValue::Type::Reference);
   }
 }
 
@@ -748,7 +691,8 @@ TEST_F(SerializerTest, EncodesGeoPoint) {
 
   for (const GeoPoint& geo_value : cases) {
     FieldValue model = FieldValue::FromGeoPoint(geo_value);
-    ExpectRoundTrip(model, ValueProto(geo_value), FieldValue::Type::GeoPoint);
+    ExpectRoundTrip(model, ProtoValue::Wrap(geo_value),
+                    FieldValue::Type::GeoPoint);
   }
 }
 
@@ -770,8 +714,9 @@ TEST_F(SerializerTest, EncodesArray) {
        FieldValue::FromString("bar")}};
 
   for (const std::vector<FieldValue>& array_value : cases) {
-    FieldValue model = FieldValue::FromArray(array_value);
-    ExpectRoundTrip(model, ValueProto(array_value), FieldValue::Type::Array);
+      FieldValue model = FieldValue::FromArray(array_value);
+    ExpectRoundTrip(model, ProtoValue::WrapArray(array_value),
+                    FieldValue::Type::Array);
   }
 }
 
@@ -809,31 +754,32 @@ TEST_F(SerializerTest, EncodesNestedObjects) {
   v1::Value inner_proto;
   google::protobuf::Map<std::string, v1::Value>* inner_fields =
       inner_proto.mutable_map_value()->mutable_fields();
-  (*inner_fields)["e"] = ValueProto(std::numeric_limits<int64_t>::max());
+  (*inner_fields)["e"] = ProtoValue::Wrap(std::numeric_limits<int64_t>::max());
 
   v1::Value middle_proto;
   google::protobuf::Map<std::string, v1::Value>* middle_fields =
       middle_proto.mutable_map_value()->mutable_fields();
-  (*middle_fields)["d"] = ValueProto(int64_t{100});
+  (*middle_fields)["d"] = ProtoValue::Wrap(int64_t{100});
   (*middle_fields)["nested"] = inner_proto;
 
   v1::Value array_proto;
-  *array_proto.mutable_array_value()->add_values() = ValueProto(int64_t{2});
-  *array_proto.mutable_array_value()->add_values() = ValueProto("bar");
+  *array_proto.mutable_array_value()->add_values() =
+      ProtoValue::Wrap(int64_t{2});
+  *array_proto.mutable_array_value()->add_values() = ProtoValue::Wrap("bar");
   v1::Value array_inner_proto;
   google::protobuf::Map<std::string, v1::Value>* array_inner_fields =
       array_inner_proto.mutable_map_value()->mutable_fields();
-  (*array_inner_fields)["b"] = ValueProto(false);
+  (*array_inner_fields)["b"] = ProtoValue::Wrap(false);
   *array_proto.mutable_array_value()->add_values() = array_inner_proto;
 
   v1::Value proto;
   google::protobuf::Map<std::string, v1::Value>* fields =
       proto.mutable_map_value()->mutable_fields();
-  (*fields)["b"] = ValueProto(true);
-  (*fields)["d"] = ValueProto(std::numeric_limits<double>::max());
-  (*fields)["i"] = ValueProto(int64_t{1});
-  (*fields)["n"] = ValueProto(nullptr);
-  (*fields)["s"] = ValueProto("foo");
+  (*fields)["b"] = ProtoValue::Wrap(true);
+  (*fields)["d"] = ProtoValue::Wrap(std::numeric_limits<double>::max());
+  (*fields)["i"] = ProtoValue::Wrap(int64_t{1});
+  (*fields)["n"] = ProtoValue::Wrap(nullptr);
+  (*fields)["s"] = ProtoValue::Wrap("foo");
   (*fields)["a"] = array_proto;
   (*fields)["o"] = middle_proto;
 
@@ -1140,15 +1086,15 @@ TEST_F(SerializerTest, EncodesNonEmptyDocument) {
   v1::Value inner_proto;
   google::protobuf::Map<std::string, v1::Value>& inner_fields =
       *inner_proto.mutable_map_value()->mutable_fields();
-  inner_fields["fourty-two"] = ValueProto(int64_t{42});
+  inner_fields["fourty-two"] = ProtoValue::Wrap(int64_t{42});
 
   v1::BatchGetDocumentsResponse proto;
   v1::Document* doc_proto = proto.mutable_found();
   doc_proto->set_name(FromBytes(serializer.EncodeKey(key)));
   google::protobuf::Map<std::string, v1::Value>& m =
       *doc_proto->mutable_fields();
-  m["foo"] = ValueProto("bar");
-  m["two"] = ValueProto(int64_t{2});
+  m["foo"] = ProtoValue::Wrap("bar");
+  m["two"] = ProtoValue::Wrap(int64_t{2});
   m["nested"] = inner_proto;
 
   google::protobuf::Timestamp* update_time_proto =
@@ -1419,15 +1365,15 @@ TEST_F(SerializerTest, EncodesBounds) {
 
   v1::Cursor start_at;
   start_at.set_before(false);
-  *start_at.add_values() = ValueProto("prop");
-  *start_at.add_values() = ValueProto(42);
+  *start_at.add_values() = ProtoValue::Wrap("prop");
+  *start_at.add_values() = ProtoValue::Wrap(42);
   *proto.mutable_query()->mutable_structured_query()->mutable_start_at() =
       std::move(start_at);
 
   v1::Cursor end_at;
   end_at.set_before(true);
-  *end_at.add_values() = ValueProto("author");
-  *end_at.add_values() = ValueProto("dimond");
+  *end_at.add_values() = ProtoValue::Wrap("author");
+  *end_at.add_values() = ProtoValue::Wrap("dimond");
   *proto.mutable_query()->mutable_structured_query()->mutable_end_at() =
       std::move(end_at);
 
@@ -1557,9 +1503,9 @@ TEST_F(SerializerTest, DecodesMutationResult) {
   proto.mutable_update_time()->set_seconds(version.timestamp().seconds());
   proto.mutable_update_time()->set_nanos(version.timestamp().nanoseconds());
   auto transform_results = proto.mutable_transform_results();
-  *transform_results->Add() = ValueProto(true);
-  *transform_results->Add() = ValueProto(1234);
-  *transform_results->Add() = ValueProto("string");
+  *transform_results->Add() = ProtoValue::Wrap(true);
+  *transform_results->Add() = ProtoValue::Wrap(1234);
+  *transform_results->Add() = ProtoValue::Wrap("string");
 
   SCOPED_TRACE("DecodesMutationResult");
   ExpectDeserializationRoundTrip(model, proto, Version(10000000));
@@ -1643,7 +1589,7 @@ TEST_F(SerializerTest, DecodesListenResponseWithDocumentChange) {
   document_change->mutable_document()->mutable_update_time()->set_nanos(
       version.timestamp().nanoseconds());
   (*document_change->mutable_document()->mutable_fields())["foo"] =
-      ValueProto("bar");
+      ProtoValue::Wrap("bar");
 
   document_change->add_target_ids(1);
   document_change->add_target_ids(3);
@@ -1744,8 +1690,8 @@ TEST_F(SerializerTest, EncodesSetMutation) {
   v1::Document& doc = *proto.mutable_update();
   doc.set_name(ResourceName("docs/1"));
   auto& fields = *doc.mutable_fields();
-  fields["a"] = ValueProto("b");
-  fields["num"] = ValueProto(1);
+  fields["a"] = ProtoValue::Wrap("b");
+  fields["num"] = ProtoValue::Wrap(1);
 
   ExpectRoundTrip(model, proto);
 }
@@ -1759,10 +1705,10 @@ TEST_F(SerializerTest, EncodesPatchMutation) {
   v1::Document& doc = *proto.mutable_update();
   doc.set_name(ResourceName("docs/1"));
   auto& fields = *doc.mutable_fields();
-  fields["a"] = ValueProto("b");
-  fields["num"] = ValueProto(1);
+  fields["a"] = ProtoValue::Wrap("b");
+  fields["num"] = ProtoValue::Wrap(1);
   auto nested = Map("thing'", Value(2));
-  fields["some"] = ValueProto(Map("de\\ep", nested));
+  fields["some"] = ProtoValue::Wrap(Map("de\\ep", nested));
 
   v1::DocumentMask& mask = *proto.mutable_update_mask();
   mask.add_field_paths("a");
@@ -1862,14 +1808,14 @@ TEST_F(SerializerTest, EncodesArrayTransform) {
   v1::DocumentTransform::FieldTransform union_proto;
   union_proto.set_field_path("a");
   v1::ArrayValue& append = *union_proto.mutable_append_missing_elements();
-  *append.add_values() = ValueProto("a");
-  *append.add_values() = ValueProto(2);
+  *append.add_values() = ProtoValue::Wrap("a");
+  *append.add_values() = ProtoValue::Wrap(2);
   *set_proto.add_update_transforms() = std::move(union_proto);
 
   v1::DocumentTransform::FieldTransform remove_proto;
   remove_proto.set_field_path("bar");
   v1::ArrayValue& remove = *remove_proto.mutable_remove_all_from_array();
-  *remove.add_values() = ValueProto(Map("x", 1));
+  *remove.add_values() = ProtoValue::Wrap(Map("x", 1));
   *set_proto.add_update_transforms() = std::move(remove_proto);
 
   ExpectRoundTrip(set_model, set_proto);
@@ -1885,14 +1831,14 @@ TEST_F(SerializerTest, EncodesArrayTransform) {
   v1::DocumentTransform::FieldTransform union_proto2;
   union_proto2.set_field_path("a");
   v1::ArrayValue& append2 = *union_proto2.mutable_append_missing_elements();
-  *append2.add_values() = ValueProto("a");
-  *append2.add_values() = ValueProto(2);
+  *append2.add_values() = ProtoValue::Wrap("a");
+  *append2.add_values() = ProtoValue::Wrap(2);
   *patch_proto.add_update_transforms() = std::move(union_proto2);
 
   v1::DocumentTransform::FieldTransform remove_proto2;
   remove_proto2.set_field_path("bar");
   v1::ArrayValue& remove2 = *remove_proto2.mutable_remove_all_from_array();
-  *remove2.add_values() = ValueProto(Map("x", 1));
+  *remove2.add_values() = ProtoValue::Wrap(Map("x", 1));
   *patch_proto.add_update_transforms() = std::move(remove_proto2);
 
   v1::DocumentMask mask;
@@ -1910,8 +1856,8 @@ TEST_F(SerializerTest, EncodesSetMutationWithPrecondition) {
   v1::Document& doc = *proto.mutable_update();
   doc.set_name(ResourceName("foo/bar"));
   auto& fields = *doc.mutable_fields();
-  fields["a"] = ValueProto("b");
-  fields["num"] = ValueProto(1);
+  fields["a"] = ProtoValue::Wrap("b");
+  fields["num"] = ProtoValue::Wrap(1);
 
   google::protobuf::Timestamp timestamp;
   timestamp.set_nanos(4000);
@@ -1929,9 +1875,9 @@ TEST_F(SerializerTest, RoundTripsSpecialFieldNames) {
   v1::Document& doc = *proto.mutable_update();
   doc.set_name(ResourceName("collection/key"));
   auto& fields = *doc.mutable_fields();
-  fields["field"] = ValueProto("field 1");
-  fields["field.dot"] = ValueProto(2);
-  fields["field\\slash"] = ValueProto(3);
+  fields["field"] = ProtoValue::Wrap("field 1");
+  fields["field.dot"] = ProtoValue::Wrap(2);
+  fields["field\\slash"] = ProtoValue::Wrap(3);
 
   ExpectRoundTrip(model, proto);
 }
@@ -1954,7 +1900,7 @@ TEST_F(SerializerTest, EncodesFieldFilter) {
   v1::StructuredQuery::FieldFilter& field = *proto.mutable_field_filter();
   field.mutable_field()->set_field_path("item.part.top");
   field.set_op(v1::StructuredQuery::FieldFilter::EQUAL);
-  *field.mutable_value() = ValueProto("food");
+  *field.mutable_value() = ProtoValue::Wrap("food");
 
   ExpectRoundTrip(model, proto);
 }
@@ -1966,7 +1912,7 @@ TEST_F(SerializerTest, EncodesNotEqualFilter) {
   v1::StructuredQuery::FieldFilter& field = *proto.mutable_field_filter();
   field.mutable_field()->set_field_path("item.tags");
   field.set_op(v1::StructuredQuery::FieldFilter::NOT_EQUAL);
-  *field.mutable_value() = ValueProto("food");
+  *field.mutable_value() = ProtoValue::Wrap("food");
 
   ExpectRoundTrip(model, proto);
 }
@@ -1978,7 +1924,7 @@ TEST_F(SerializerTest, EncodesArrayContainsFilter) {
   v1::StructuredQuery::FieldFilter& field = *proto.mutable_field_filter();
   field.mutable_field()->set_field_path("item.tags");
   field.set_op(v1::StructuredQuery::FieldFilter::ARRAY_CONTAINS);
-  *field.mutable_value() = ValueProto("food");
+  *field.mutable_value() = ProtoValue::Wrap("food");
 
   ExpectRoundTrip(model, proto);
 }
@@ -1991,7 +1937,8 @@ TEST_F(SerializerTest, EncodesArrayContainsAnyFilter) {
   v1::StructuredQuery::FieldFilter& field = *proto.mutable_field_filter();
   field.mutable_field()->set_field_path("item.tags");
   field.set_op(v1::StructuredQuery::FieldFilter::ARRAY_CONTAINS_ANY);
-  *field.mutable_value() = ValueProto(std::vector<FieldValue>{Value("food")});
+  *field.mutable_value() =
+      ProtoValue::Wrap(std::vector<FieldValue>{Value("food")});
 
   ExpectRoundTrip(model, proto);
 }
@@ -2003,7 +1950,8 @@ TEST_F(SerializerTest, EncodesInFilter) {
   v1::StructuredQuery::FieldFilter& field = *proto.mutable_field_filter();
   field.mutable_field()->set_field_path("item.tags");
   field.set_op(v1::StructuredQuery::FieldFilter::IN_);
-  *field.mutable_value() = ValueProto(std::vector<FieldValue>{Value("food")});
+  *field.mutable_value() =
+      ProtoValue::Wrap(std::vector<FieldValue>{Value("food")});
 
   ExpectRoundTrip(model, proto);
 }
@@ -2015,7 +1963,8 @@ TEST_F(SerializerTest, EncodesNotInFilter) {
   v1::StructuredQuery::FieldFilter& field = *proto.mutable_field_filter();
   field.mutable_field()->set_field_path("item.tags");
   field.set_op(v1::StructuredQuery::FieldFilter::NOT_IN);
-  *field.mutable_value() = ValueProto(std::vector<FieldValue>{Value("food")});
+  *field.mutable_value() =
+      ProtoValue::Wrap(std::vector<FieldValue>{Value("food")});
 
   ExpectRoundTrip(model, proto);
 }
@@ -2029,7 +1978,7 @@ TEST_F(SerializerTest, EncodesNotInFilterWithNull) {
   field.mutable_field()->set_field_path("item.tags");
   field.set_op(v1::StructuredQuery::FieldFilter::NOT_IN);
   *field.mutable_value() =
-      ValueProto(std::vector<FieldValue>{FieldValue::Null()});
+      ProtoValue::Wrap(std::vector<FieldValue>{FieldValue::Null()});
 
   ExpectRoundTrip(model, proto);
 }
@@ -2041,8 +1990,8 @@ TEST_F(SerializerTest, EncodesKeyFieldFilter) {
   v1::StructuredQuery::FieldFilter& field = *proto.mutable_field_filter();
   field.mutable_field()->set_field_path("__name__");
   field.set_op(v1::StructuredQuery::FieldFilter::EQUAL);
-  *field.mutable_value() =
-      ValueProto(FieldValue::Reference{DatabaseId{"p", "d"}, Key("coll/doc")});
+  *field.mutable_value() = ProtoValue::Wrap(
+      FieldValue::Reference{DatabaseId{"p", "d"}, Key("coll/doc")});
 
   ExpectRoundTrip(model, proto);
 }
